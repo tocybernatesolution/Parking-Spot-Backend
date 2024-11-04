@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import User from "../../models/User.js";
-import bcrypt from 'bcrypt'
+import bcrypt from "bcrypt";
+import { generateTokens } from "../../middleware/token.js";
 const generateids = async (req, res) => {
   try {
     const { count } = req.body;
@@ -34,9 +35,9 @@ const register = async (req, res) => {
   try {
     req.body.role = "admin";
     req.body.isDataComplete = true;
-    const saltRounds=10
-    const hashedPassword=await bcrypt.hash(req.body.password,saltRounds);
-    req.body.password=hashedPassword;
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
+    req.body.password = hashedPassword;
     let user = await new User(req.body).save();
     return res.status(201).json({
       status: true,
@@ -51,4 +52,28 @@ const register = async (req, res) => {
     });
   }
 };
-export { generateids, register };
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const isMatch = await bcrypt.compare(password, req.user.password);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid username and password" });
+    }
+    const { accessToken, refreshToken } = generateTokens(req.user);
+    return res.status(201).json({
+      status: true,
+      message: "User Registered Successfully",
+      accessToken,
+      refreshToken
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Error generating IDs",
+      error: error.message,
+    });
+  }
+};
+export { generateids, register, login };
